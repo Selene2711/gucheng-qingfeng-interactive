@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="creative-medium" content="interactive-prototype">
+  <title>菰城清风海报交互</title>
+  <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Ma+Shan+Zheng&display=swap">
+  <style>
+/* ===== 基础重置 ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+  color: #2c2416;
+  background: #f5f0e8;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== 背景层 ===== */
+.bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.4;
+  animation: glowShift 12s ease-in-out infinite alternate;
+}
+
+.bg-glow-1 {
+  width: 60vw;
+  height: 60vw;
+  top: -20vw;
+  left: -15vw;
+  background: radial-gradient(circle, rgba(200, 60, 60, 0.25), transparent 70%);
+}
+
+.bg-glow-2 {
+  width: 50vw;
+  height: 50vw;
+  bottom: -15vw;
+  right: -10vw;
+  background: radial-gradient(circle, rgba(180, 140, 60, 0.3), transparent 70%);
+  animation-delay: -6s;
+}
+
+@keyframes glowShift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, 20px) scale(1.1); }
+}
+
+.ink-pattern {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse at 20% 30%, rgba(120, 80, 40, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(120, 80, 40, 0.03) 0%, transparent 50%);
+}
+
+/* ===== 页面头部 ===== */
+.page-header {
+  position: relative;
+  z-index: 10;
+  padding: 24px 32px 0;
+  text-align: center;
+}
+
+.title-wrap {
+  margin-bottom: 14px;
+}
+
+.main-title {
+  font-family: "Ma Shan Zheng", "Noto Serif SC", serif;
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  color: #1a1410;
+  text-shadow: 0 2px 8px rgba(180, 120, 60, 0.15);
+}
+
+.sub-title {
+  margin-top: 6px;
+  font-size: clamp(12px, 1.4vw, 14px);
+  letter-spacing: 0.3em;
+  color: #8a7355;
+  font-weight: 400;
+}
+
+.poster-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.poster-indicator .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d4c9b8;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.poster-indicator .dot.active {
+  width: 28px;
+  border-radius: 4px;
+  background: #b0895c;
+}
+
+/* ===== 主舞台 ===== */
+.stage {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: calc(100vh - 200px);
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.poster-container {
+  position: relative;
+  width: min(38vh, 320px);
+  height: min(54vh, 460px);
+  aspect-ratio: 3509 / 4961;
+}
+
+#posterCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  cursor: grab;
+}
+
+#posterCanvas:active {
+  cursor: grabbing;
+}
+
+.poster-frame {
+  position: absolute;
+  inset: -8px;
+  border: 1px solid rgba(120, 80, 40, 0.2);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* ===== 摄像头预览 ===== */
+.camera-preview {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 160px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.camera-preview.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9);
+}
+
+.camera-preview video,
+.camera-preview canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* 镜像显示 */
+}
+
+.camera-status {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #fff;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e74c3c;
+  flex-shrink: 0;
+}
+
+.status-dot.active {
+  background: #2ecc71;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ===== 手势提示卡片 ===== */
+.gesture-hint {
+  position: fixed;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 15;
+}
+
+.hint-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 1px solid rgba(176, 137, 92, 0.2);
+  box-shadow: 0 2px 12px rgba(120, 80, 40, 0.08);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.hint-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 16px rgba(120, 80, 40, 0.12);
+}
+
+.hint-icon {
+  font-size: 22px;
+  width: 32px;
+  text-align: center;
+}
+
+.hint-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.hint-text strong {
+  font-size: 13px;
+  color: #3d3226;
+  font-weight: 600;
+}
+
+.hint-text span {
+  font-size: 11px;
+  color: #8a7355;
+}
+
+/* ===== 当前手势显示 ===== */
+.current-gesture {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 1px solid rgba(176, 137, 92, 0.25);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 15;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.current-gesture.visible {
+  opacity: 1;
+}
+
+.gesture-label {
+  font-size: 12px;
+  color: #8a7355;
+}
+
+.gesture-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #3d3226;
+}
+
+/* ===== 页脚 ===== */
+.page-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 32px 24px;
+  text-align: center;
+  z-index: 10;
+  background: linear-gradient(transparent, rgba(245, 240, 232, 0.9) 50%);
+}
+
+.mode-switch {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 30px;
+  padding: 4px;
+  border: 1px solid rgba(176, 137, 92, 0.2);
+  margin-bottom: 10px;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: none;
+  background: transparent;
+  border-radius: 24px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: #8a7355;
+  transition: all 0.3s;
+}
+
+.mode-btn:hover {
+  color: #3d3226;
+}
+
+.mode-btn.active {
+  background: #3d3226;
+  color: #f5f0e8;
+  box-shadow: 0 2px 8px rgba(60, 40, 20, 0.2);
+}
+
+.mode-icon {
+  font-size: 16px;
+}
+
+.tip-text {
+  font-size: 12px;
+  color: #a08d72;
+  letter-spacing: 0.1em;
+}
+
+/* ===== 权限弹窗 ===== */
+.permission-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 20, 10, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: #faf7f2;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(60, 40, 20, 0.2);
+}
+
+.modal-content h3 {
+  font-size: 18px;
+  color: #1a1410;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.modal-content p {
+  font-size: 14px;
+  color: #6b5a45;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 10px 24px;
+  border-radius: 24px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+}
+
+.btn-primary {
+  background: #3d3226;
+  color: #f5f0e8;
+}
+
+.btn-primary:hover {
+  background: #1a1410;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #6b5a45;
+  border: 1px solid #c9bfa8;
+}
+
+.btn-secondary:hover {
+  border-color: #8a7355;
+  color: #3d3226;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .page-header {
+    padding: 16px 20px 0;
+  }
+
+  .main-title {
+    letter-spacing: 0.3em;
+  }
+
+  .camera-preview {
+    width: 100px;
+    height: 75px;
+    top: auto;
+    bottom: 90px;
+    right: 12px;
+  }
+
+  .gesture-hint {
+    position: static;
+    transform: none;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 0 12px;
+    margin-bottom: 8px;
+  }
+
+  .hint-card {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .hint-icon {
+    font-size: 16px;
+    width: 20px;
+  }
+
+  .hint-text strong {
+    font-size: 11px;
+  }
+
+  .hint-text span {
+    font-size: 10px;
+  }
+
+  .stage {
+    height: calc(100vh - 280px);
+    min-height: 380px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .poster-container {
+    width: min(42vh, 260px);
+    height: min(60vh, 380px);
+  }
+
+  .page-footer {
+    padding: 12px 16px 16px;
+  }
+
+  .current-gesture {
+    top: auto;
+    bottom: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .poster-container {
+    width: 70vw;
+    height: calc(70vw * 4961 / 3509);
+  }
+}
+
+/* ===== 故事图文层 ===== */
+.story-layer {
+  position: absolute;
+  inset: -30%;
+  z-index: 2;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 1.2s ease-out, filter 1.2s ease-out, transform 1.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: blur(16px);
+  transform: scale(1.15);
+}
+
+.story-layer.visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+
+.story-layer.fading {
+  opacity: 0;
+  filter: blur(8px);
+  transform: scale(0.98);
+  transition: opacity 0.5s ease-in, filter 0.5s ease-in, transform 0.6s ease-in;
+}
+
+.story-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+
+.story-photo-wrap {
+  position: relative;
+  width: min(65%, 200px);
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(60, 40, 20, 0.25), 0 2px 8px rgba(60, 40, 20, 0.15);
+  transform: scale(1.08);
+  opacity: 0.7;
+  transition: transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s,
+              opacity 1.2s ease-out 0.3s,
+              filter 1.4s ease-out 0.1s;
+  filter: blur(6px) saturate(0.8);
+}
+
+.story-layer.visible .story-photo-wrap {
+  transform: scale(1);
+  opacity: 1;
+  filter: blur(0) saturate(1);
+}
+
+.story-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.story-photo-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 240, 232, 0) 0%,
+    rgba(245, 240, 232, 0) 60%,
+    rgba(245, 240, 232, 0.3) 100%
+  );
+  pointer-events: none;
+}
+
+.story-text {
+  text-align: center;
+  max-width: 280px;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 1.4s ease-out 0.5s, transform 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.5s;
+  filter: blur(4px);
+}
+
+.story-layer.visible .story-text {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.story-eyebrow {
+  font-family: "Ma Shan Zheng", "Noto Serif SC", serif;
+  font-size: 13px;
+  letter-spacing: 0.4em;
+  color: #b0895c;
+  margin-bottom: 8px;
+  opacity: 0.85;
+}
+
+.story-title {
+  font-family: "Noto Serif SC", serif;
+  font-size: clamp(16px, 2.2vw, 20px);
+  font-weight: 700;
+  color: #2c2416;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.story-body {
+  font-size: clamp(11px, 1.3vw, 12.5px);
+  line-height: 2;
+  color: #5a4a36;
+  text-align: justify;
+  text-indent: 2em;
+  letter-spacing: 0.02em;
+}
+
+.story-decoration {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 60% auto;
+  opacity: 0;
+  transition: opacity 2s ease-out 0.8s;
+}
+
+.story-layer.visible .story-decoration {
+  opacity: 0.12;
+}
+
+/* 各主题装饰纹样 */
+.story-decoration.theme-plum {
+  background-image: radial-gradient(ellipse at 50% 100%, rgba(180, 50, 60, 0.3), transparent 60%);
+}
+
+.story-decoration.theme-ginkgo {
+  background-image: radial-gradient(ellipse at 30% 100%, rgba(200, 160, 50, 0.25), transparent 50%),
+                    radial-gradient(ellipse at 70% 90%, rgba(200, 160, 50, 0.2), transparent 45%);
+}
+
+.story-decoration.theme-maple {
+  background-image: radial-gradient(ellipse at 50% 100%, rgba(200, 100, 40, 0.25), transparent 55%),
+                    radial-gradient(ellipse at 20% 85%, rgba(180, 80, 30, 0.15), transparent 40%),
+                    radial-gradient(ellipse at 80% 88%, rgba(180, 80, 30, 0.15), transparent 40%);
+}
+
+  </style>
+</head>
+<body>
+<!-- 背景装饰 -->
+  <div class="bg-layer">
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="ink-pattern"></div>
+  </div>
+
+  <!-- 顶部标题 -->
+  <header class="page-header">
+    <div class="title-wrap">
+      <h1 class="main-title">菰城清风</h1>
+      <p class="sub-title">廉洁文化海报 · 手势交互展示</p>
+    </div>
+    <div class="poster-indicator">
+      <span class="dot active" data-poster="0"></span>
+      <span class="dot" data-poster="1"></span>
+      <span class="dot" data-poster="2"></span>
+    </div>
+  </header>
+
+  <!-- 主舞台 -->
+  <main class="stage">
+    <!-- 海报画布 -->
+    <div class="poster-container">
+      <canvas id="posterCanvas"></canvas>
+      <div class="poster-frame"></div>
+      <!-- 故事图文层 -->
+      <div class="story-layer" id="storyLayer">
+        <div class="story-inner">
+          <div class="story-photo-wrap">
+            <img class="story-photo" id="storyPhoto" src="" alt="实景照片">
+            <div class="story-photo-mask"></div>
+          </div>
+          <div class="story-text">
+            <div class="story-eyebrow" id="storyEyebrow"></div>
+            <h2 class="story-title" id="storyTitle"></h2>
+            <p class="story-body" id="storyBody"></p>
+          </div>
+          <div class="story-decoration" id="storyDecoration"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 摄像头预览（小窗口） -->
+    <div class="camera-preview" id="cameraPreview">
+      <video id="inputVideo" autoplay playsinline muted></video>
+      <canvas id="overlayCanvas"></canvas>
+      <div class="camera-status" id="cameraStatus">
+        <span class="status-dot"></span>
+        <span class="status-text" id="statusText">正在启动摄像头…</span>
+      </div>
+    </div>
+
+    <!-- 手势提示 -->
+    <div class="gesture-hint" id="gestureHint">
+      <div class="hint-card">
+        <div class="hint-icon">✋</div>
+        <div class="hint-text">
+          <strong>手掌张开</strong>
+          <span>海报随风散开</span>
+        </div>
+      </div>
+      <div class="hint-card">
+        <div class="hint-icon">✊</div>
+        <div class="hint-text">
+          <strong>握拳</strong>
+          <span>碎片聚合归位</span>
+        </div>
+      </div>
+      <div class="hint-card">
+        <div class="hint-icon">☝️</div>
+        <div class="hint-text">
+          <strong>比 1 / 2 / 3</strong>
+          <span>切换梅 / 枫 / 杏</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 当前手势显示 -->
+    <div class="current-gesture" id="currentGesture">
+      <span class="gesture-label">识别中</span>
+      <span class="gesture-name" id="gestureName">—</span>
+    </div>
+  </main>
+
+  <!-- 底部操作引导 -->
+  <footer class="page-footer">
+    <div class="mode-switch">
+      <button class="mode-btn active" id="modeGesture">
+        <span class="mode-icon">🖐️</span>
+        <span>手势模式</span>
+      </button>
+      <button class="mode-btn" id="modeMouse">
+        <span class="mode-icon">🖱️</span>
+        <span>鼠标模式</span>
+      </button>
+    </div>
+    <p class="tip-text" id="tipText">
+      请允许摄像头权限，将手置于镜头前体验手势交互
+    </p>
+  </footer>
+
+  <!-- 权限弹窗 -->
+  <div class="permission-modal" id="permissionModal" style="display:none;">
+    <div class="modal-content">
+      <h3>需要摄像头权限</h3>
+      <p>手势交互需要使用您的摄像头来识别手部动作。<br>您也可以选择使用鼠标模式体验。</p>
+      <div class="modal-buttons">
+        <button class="btn-primary" id="btnAllowCamera">允许摄像头</button>
+        <button class="btn-secondary" id="btnUseMouse">使用鼠标模式</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MediaPipe Hands -->
+
+
+
+
+  <!-- 应用脚本 -->
+
+  <script src="../js/mediapipe/hands.js" crossorigin="anonymous"></script>
+  <script src="../js/mediapipe/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="../js/mediapipe/drawing_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+/**
+ * 形状绘制工具
+ * 为不同海报主题提供对应的碎片形状
+ * 使用 Canvas 2D 路径绘制
+ */
+
+const ShapeDrawers = (() => {
+
+  /**
+   * 梅花花瓣形状
+   * 五瓣梅花的单个花瓣 - 倒卵形，顶端圆钝，基部渐狭
+   */
+  function drawPlumPetal(ctx, size, rotation = 0) {
+    ctx.save();
+    ctx.rotate(rotation);
+    const s = size / 2;
+    ctx.beginPath();
+    // 花瓣轮廓 - 倒卵形
+    ctx.moveTo(0, -s);
+    ctx.bezierCurveTo(
+      s * 0.6, -s * 0.8,
+      s * 0.7, s * 0.2,
+      s * 0.15, s
+    );
+    ctx.bezierCurveTo(
+      -s * 0.15, s,
+      -s * 0.7, s * 0.2,
+      -s * 0.6, -s * 0.8
+    );
+    ctx.closePath();
+    ctx.restore();
+  }
+
+  /**
+   * 枫叶形状
+   * 掌状五裂，边缘有锯齿
+   */
+  function drawMapleLeaf(ctx, size, rotation = 0) {
+    ctx.save();
+    ctx.rotate(rotation);
+    const s = size / 2;
+
+    ctx.beginPath();
+    // 枫叶 - 简化为掌状五裂
+    // 顶端中裂
+    ctx.moveTo(0, -s);
+    ctx.lineTo(s * 0.15, -s * 0.5);
+    // 右上裂
+    ctx.lineTo(s * 0.7, -s * 0.6);
+    ctx.lineTo(s * 0.4, -s * 0.1);
+    // 右侧裂
+    ctx.lineTo(s * 0.85, s * 0.1);
+    ctx.lineTo(s * 0.35, s * 0.3);
+    // 右下裂
+    ctx.lineTo(s * 0.5, s * 0.85);
+    ctx.lineTo(0, s * 0.45);
+    // 左下裂
+    ctx.lineTo(-s * 0.5, s * 0.85);
+    ctx.lineTo(-s * 0.35, s * 0.3);
+    // 左侧裂
+    ctx.lineTo(-s * 0.85, s * 0.1);
+    ctx.lineTo(-s * 0.4, -s * 0.1);
+    // 左上裂
+    ctx.lineTo(-s * 0.7, -s * 0.6);
+    ctx.lineTo(-s * 0.15, -s * 0.5);
+    ctx.closePath();
+
+    ctx.restore();
+  }
+
+  /**
+   * 银杏叶形状
+   * 扇形，顶端二裂，边缘波浪状
+   */
+  function drawGinkgoLeaf(ctx, size, rotation = 0) {
+    ctx.save();
+    ctx.rotate(rotation);
+    const s = size / 2;
+
+    ctx.beginPath();
+    // 叶柄
+    ctx.moveTo(s * 0.08, s);
+    ctx.lineTo(-s * 0.08, s);
+    ctx.lineTo(-s * 0.04, s * 0.3);
+    ctx.lineTo(s * 0.04, s * 0.3);
+    ctx.closePath();
+
+    // 扇形叶片
+    ctx.beginPath();
+    ctx.moveTo(s * 0.04, s * 0.3);
+    // 右半扇
+    ctx.quadraticCurveTo(s * 0.3, s * 0.2, s * 0.7, -s * 0.1);
+    ctx.quadraticCurveTo(s * 0.9, -s * 0.4, s * 0.6, -s * 0.7);
+    // 顶端波浪
+    ctx.quadraticCurveTo(s * 0.4, -s * 0.85, s * 0.2, -s * 0.7);
+    ctx.quadraticCurveTo(0, -s * 0.9, -s * 0.2, -s * 0.7);
+    ctx.quadraticCurveTo(-s * 0.4, -s * 0.85, -s * 0.6, -s * 0.7);
+    // 左半扇
+    ctx.quadraticCurveTo(-s * 0.9, -s * 0.4, -s * 0.7, -s * 0.1);
+    ctx.quadraticCurveTo(-s * 0.3, s * 0.2, -s * 0.04, s * 0.3);
+    ctx.closePath();
+
+    ctx.restore();
+  }
+
+  /**
+   * 获取对应主题的形状绘制函数
+   */
+  function getShapeDrawer(posterIndex) {
+    switch (posterIndex) {
+      case 0: return drawPlumPetal;   // 梅花
+      case 1: return drawMapleLeaf;   // 枫叶
+      case 2: return drawGinkgoLeaf;  // 银杏
+      default: return drawPlumPetal;
+    }
+  }
+
+  /**
+   * 获取形状名称
+   */
+  function getShapeName(posterIndex) {
+    return ['梅花瓣', '枫叶', '银杏叶'][posterIndex] || '碎片';
+  }
+
+  return {
+    drawPlumPetal,
+    drawMapleLeaf,
+    drawGinkgoLeaf,
+    getShapeDrawer,
+    getShapeName
+  };
+})();
+
+  </script>
+
+  <script>
+/**
+ * 粒子系统
+ * 将海报图像分解为具有主题形状的粒子
+ * 支持散开、聚合、漂浮三种状态
+ */
+
+class ParticleSystem {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.particles = [];
+    this.posterImage = null;
+    this.posterIndex = 0;
+    this._posterLoadVersion = 0;
+    this.dpr = window.devicePixelRatio || 1;
+
+    // 状态：0=完整海报, 1=散开中, 2=飘散中, 3=聚合中
+    this.state = 0;
+    this.scatterProgress = 0; // 0~1
+    this.gatherProgress = 1;  // 0~1
+
+    // 飘散参数
+    this.windStrength = 0.15;
+    this.time = 0;
+
+    // 粒子大小
+    this.particleBaseSize = 18;
+    this.particleDensity = 0.04; // 粒子采样密度
+
+    // 鼠标/触摸交互
+    this.mousePos = { x: 0, y: 0 };
+    this.isDragging = false;
+    this.dragScatterAmount = 0;
+
+    this.resize();
+    this._bindEvents();
+  }
+
+  resize() {
+    const rect = this.canvas.getBoundingClientRect();
+    this.canvas.width = rect.width * this.dpr;
+    this.canvas.height = rect.height * this.dpr;
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.width = rect.width;
+    this.height = rect.height;
+
+    // 高清图像渲染设置
+    this.ctx.imageSmoothingEnabled = true;
+    this.ctx.imageSmoothingQuality = 'high';
+  }
+
+  _bindEvents() {
+    // 鼠标拖拽散开
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (window.appMode === 'mouse') {
+        this.wasDragging = false;
+        this.isDragging = true;
+        this._updateMousePos(e);
+      }
+    });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      this._updateMousePos(e);
+      if (this.isDragging && window.appMode === 'mouse') {
+        this.wasDragging = true;
+        this.dragScatterAmount = Math.min(1, this.dragScatterAmount + 0.08);
+      }
+    });
+
+    this.canvas.addEventListener('mouseup', () => {
+      if (window.appMode === 'mouse') {
+        this.isDragging = false;
+      }
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      if (window.appMode === 'mouse') {
+        this.isDragging = false;
+      }
+    });
+
+    // 点击聚合
+    this.canvas.addEventListener('click', (e) => {
+      if (window.appMode === 'mouse' && !this.wasDragging) {
+        this.gather();
+      }
+      this.wasDragging = false;
+    });
+
+    // 触摸支持
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (window.appMode === 'mouse' && e.touches.length > 0) {
+        this.wasDragging = false;
+        this.isDragging = true;
+        this._updateMousePos(e.touches[0]);
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) {
+        this._updateMousePos(e.touches[0]);
+        if (this.isDragging && window.appMode === 'mouse') {
+          this.wasDragging = true;
+          this.dragScatterAmount = Math.min(1, this.dragScatterAmount + 0.06);
+        }
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchend', (e) => {
+      if (window.appMode === 'mouse') {
+        this.isDragging = false;
+      }
+      e.preventDefault();
+    }, { passive: false });
+
+    window.addEventListener('resize', () => {
+      this.resize();
+      if (this.posterImage) {
+        this._createParticles();
+      }
+    });
+  }
+
+  _updateMousePos(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    this.mousePos.x = e.clientX - rect.left;
+    this.mousePos.y = e.clientY - rect.top;
+  }
+
+  /**
+   * 加载海报并创建粒子
+   */
+  loadPoster(imageSrc, posterIndex) {
+    const requestVersion = ++this._posterLoadVersion;
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        if (requestVersion !== this._posterLoadVersion) {
+          resolve(false);
+          return;
+        }
+        this.posterImage = img;
+        this.posterIndex = posterIndex;
+        this._createParticles();
+        this.state = 0;
+        this.gatherProgress = 1;
+        this.scatterProgress = 0;
+        resolve(true);
+      };
+      img.onerror = reject;
+      img.src = imageSrc;
+    });
+  }
+
+  _createParticles() {
+    this.particles = [];
+
+    if (!this.posterImage) return;
+
+    // 计算海报在画布中的显示区域（contain 模式）
+    const imgRatio = this.posterImage.width / this.posterImage.height;
+    const canvasRatio = this.width / this.height;
+
+    let drawW, drawH, drawX, drawY;
+
+    if (imgRatio > canvasRatio) {
+      drawW = this.width;
+      drawH = this.width / imgRatio;
+      drawX = 0;
+      drawY = (this.height - drawH) / 2;
+    } else {
+      drawH = this.height;
+      drawW = this.height * imgRatio;
+      drawY = 0;
+      drawX = (this.width - drawW) / 2;
+    }
+
+    this.drawX = drawX;
+    this.drawY = drawY;
+    this.drawW = drawW;
+    this.drawH = drawH;
+
+    // 使用离屏 canvas 采样颜色
+    // 根据显示宽度计算采样分辨率，保证每 6~8 个 CSS 像素一个粒子
+    const sampleCols = Math.max(60, Math.min(160, Math.round(drawW / 4)));
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = sampleCols;
+    offCanvas.height = Math.round(sampleCols / imgRatio);
+    const offCtx = offCanvas.getContext('2d');
+    // 高质量缩放采样
+    offCtx.imageSmoothingEnabled = true;
+    offCtx.imageSmoothingQuality = 'high';
+    offCtx.drawImage(this.posterImage, 0, 0, offCanvas.width, offCanvas.height);
+
+    const imageData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+    const data = imageData.data;
+
+    const shapeDrawer = ShapeDrawers.getShapeDrawer(this.posterIndex);
+
+    // 生成粒子 - 均匀采样
+    const cols = offCanvas.width;
+    const rows = offCanvas.height;
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const idx = (y * cols + x) * 4;
+        const r = data[idx];
+        const g = data[idx + 1];
+        const b = data[idx + 2];
+        const a = data[idx + 3];
+
+        // 跳过过于透明的像素
+        if (a < 30) continue;
+
+        // 计算原始位置
+        const px = drawX + (x / cols) * drawW;
+        const py = drawY + (y / rows) * drawH;
+
+        // 计算散开目标位置（随机分布在周围）
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 80 + Math.random() * 180;
+        const targetX = this.width / 2 + Math.cos(angle) * dist * (0.5 + Math.random() * 0.5);
+        const targetY = this.height / 2 + Math.sin(angle) * dist * (0.5 + Math.random() * 0.5);
+
+        // 粒子大小：根据采样间距自适应，保证聚合时粒子能完整覆盖海报
+        const spacing = drawW / sampleCols;
+        const size = spacing * 2.2 * (0.7 + Math.random() * 0.6);
+
+        // 颜色亮度微调，增加层次感
+        const brightness = 0.9 + Math.random() * 0.2;
+        const color = `rgb(${Math.min(255, Math.round(r * brightness))}, ${Math.min(255, Math.round(g * brightness))}, ${Math.min(255, Math.round(b * brightness))})`;
+
+        this.particles.push({
+          // 原始位置（聚合位置）
+          ox: px,
+          oy: py,
+          // 当前位置
+          x: px,
+          y: py,
+          // 散开目标
+          tx: targetX,
+          ty: targetY,
+          // 飘散参数
+          floatOffsetX: Math.random() * Math.PI * 2,
+          floatOffsetY: Math.random() * Math.PI * 2 + Math.PI / 2,
+          floatSpeed: 0.3 + Math.random() * 0.5,
+          floatAmpX: 8 + Math.random() * 12,
+          floatAmpY: 5 + Math.random() * 8,
+          // 旋转
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.02,
+          // 大小
+          size: size,
+          // 颜色
+          color: color,
+          // 延迟（制造错落感）
+          delay: Math.random() * 0.5,
+          // 形状
+          shapeDrawer: shapeDrawer,
+          // 物理速度
+          vx: 0,
+          vy: 0
+        });
+      }
+    }
+
+    console.log(`创建了 ${this.particles.length} 个粒子`);
+  }
+
+  /**
+   * 散开
+   */
+  scatter() {
+    if (this.state === 1 || this.state === 2) return;
+    this.state = 1; // 散开中
+    this.scatterProgress = 0;
+  }
+
+  /**
+   * 聚合
+   */
+  gather() {
+    if (this.state === 3 || this.state === 0) return;
+    this.state = 3; // 聚合中
+    this.gatherProgress = 0;
+  }
+
+  /**
+   * 设置散开程度（0~1，用于手势强度控制）
+   */
+  setScatterAmount(amount) {
+    amount = Math.max(0, Math.min(1, amount));
+    if (amount > 0.1 && this.state === 0) {
+      this.state = 1;
+    }
+    this.scatterProgress = amount;
+    if (amount >= 0.95) {
+      this.state = 2; // 完全散开，进入飘散状态
+    } else if (amount < 0.05 && (this.state === 1 || this.state === 2)) {
+      this.state = 3;
+      this.gatherProgress = 0;
+    }
+  }
+
+  /**
+   * 更新一帧
+   */
+  update(dt) {
+    this.time += dt;
+
+    // 鼠标模式下的拖拽散开
+    if (window.appMode === 'mouse') {
+      if (!this.isDragging && this.dragScatterAmount > 0) {
+        this.dragScatterAmount = Math.max(0, this.dragScatterAmount - dt * 0.15);
+      }
+      this.setScatterAmount(this.dragScatterAmount);
+    }
+
+    // 状态转换
+    if (this.state === 1) {
+      // 散开中 — 放慢节奏，约 2.5 秒
+      this.scatterProgress = Math.min(1, this.scatterProgress + dt * 0.4);
+      if (this.scatterProgress >= 1) {
+        this.state = 2; // 进入飘散状态
+      }
+    } else if (this.state === 3) {
+      // 聚合中 — 放慢节奏，约 2.8 秒
+      this.gatherProgress = Math.min(1, this.gatherProgress + dt * 0.35);
+      if (this.gatherProgress >= 1) {
+        this.state = 0; // 回到完整海报
+      }
+    }
+
+    // 更新每个粒子
+    for (const p of this.particles) {
+      const delay = p.delay;
+      let progress;
+
+      if (this.state === 0) {
+        // 完整海报 - 粒子在原位
+        p.x = p.ox;
+        p.y = p.oy;
+        p.rotation *= 0.95;
+        continue;
+      }
+
+      if (this.state === 1 || this.state === 2) {
+        // 散开或飘散
+        progress = this._easeOutCubic(Math.max(0, Math.min(1, (this.scatterProgress - delay) / (1 - delay))));
+      } else if (this.state === 3) {
+        // 聚合
+        progress = 1 - this._easeInCubic(Math.max(0, Math.min(1, (this.gatherProgress - delay) / (1 - delay))));
+      }
+
+      // 基础位置（原位 ↔ 散开目标）
+      let baseX = p.ox + (p.tx - p.ox) * progress;
+      let baseY = p.oy + (p.ty - p.oy) * progress;
+
+      // 飘散时的浮动效果（清风感）
+      if (this.state === 2) {
+        const floatAmount = 1;
+        const windOffset = Math.sin(this.time * p.floatSpeed * 0.6 + p.floatOffsetX) * p.floatAmpX * floatAmount;
+        const windOffsetY = Math.cos(this.time * p.floatSpeed * 0.4 + p.floatOffsetY) * p.floatAmpY * floatAmount;
+        // 整体向右下方轻微漂移（清风方向）
+        const driftX = Math.sin(this.time * 0.1) * 12;
+        const driftY = Math.cos(this.time * 0.08) * 6;
+
+        baseX += windOffset + driftX;
+        baseY += windOffsetY + driftY;
+      }
+
+      // 平滑移动
+      p.x += (baseX - p.x) * 0.08;
+      p.y += (baseY - p.y) * 0.08;
+
+      // 旋转
+      if (this.state === 1 || this.state === 2) {
+        p.rotation += p.rotationSpeed * (0.5 + progress * 0.5);
+      } else if (this.state === 3) {
+        p.rotation *= 0.96; // 逐渐回正
+      }
+    }
+  }
+
+  /**
+   * 渲染
+   */
+  render() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.width, this.height);
+
+    if (!this.posterImage) return;
+
+    // 完整海报状态：直接绘制高清原图（最清晰）
+    if (this.state === 0) {
+      this._drawPosterImage();
+      return;
+    }
+
+    // 聚合中：后期渐显完整海报
+    if (this.state === 3) {
+      if (this.gatherProgress > 0.7) {
+        // 交叉淡入淡出：原图渐显，粒子渐隐
+        const fade = (this.gatherProgress - 0.7) / 0.3;
+        // 先画粒子（底层）
+        ctx.globalAlpha = 1 - fade;
+        this._renderParticles();
+        ctx.globalAlpha = 1;
+        // 再画高清海报（顶层，渐显）
+        ctx.globalAlpha = fade;
+        this._drawPosterImage();
+        ctx.globalAlpha = 1;
+      } else {
+        this._renderParticles();
+      }
+    }
+    // 散开中：初期渐隐完整海报
+    else if (this.state === 1) {
+      if (this.scatterProgress < 0.3) {
+        // 交叉淡入淡出：原图渐隐，粒子渐显
+        const fade = this.scatterProgress / 0.3;
+        // 先画原图（底层）
+        ctx.globalAlpha = 1 - fade;
+        this._drawPosterImage();
+        ctx.globalAlpha = 1;
+        // 再画粒子（顶层，渐显）
+        ctx.globalAlpha = fade;
+        this._renderParticles();
+        ctx.globalAlpha = 1;
+      } else {
+        this._renderParticles();
+      }
+    }
+    // 飘散中：只绘粒子
+    else {
+      this._renderParticles();
+    }
+  }
+
+  /**
+   * 以高质量方式绘制完整海报图像
+   */
+  _drawPosterImage() {
+    const ctx = this.ctx;
+    // 确保高质量缩放
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(this.posterImage, this.drawX, this.drawY, this.drawW, this.drawH);
+  }
+
+  _renderParticles() {
+    const ctx = this.ctx;
+
+    // 按 y 排序制造层次
+    const sorted = this.particles.slice().sort((a, b) => a.y - b.y);
+
+    for (const p of sorted) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+
+      // 绘制形状
+      p.shapeDrawer(ctx, p.size);
+
+      // 填充颜色
+      ctx.fillStyle = p.color;
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  _easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  _easeInCubic(t) {
+    return t * t * t;
+  }
+
+  /**
+   * 动画循环
+   */
+  start() {
+    let lastTime = performance.now();
+    const loop = (now) => {
+      const dt = Math.min(0.05, (now - lastTime) / 1000);
+      lastTime = now;
+
+      this.update(dt);
+      this.render();
+
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+}
+
+  </script>
+
+  <script>
+/**
+ * 手势检测器
+ * 封装 MediaPipe Hands，识别以下手势：
+ * - 手掌张开 (open)
+ * - 握拳 (fist)
+ * - 数字 1 (one)
+ * - 数字 2 (two)
+ * - 数字 3 (three)
+ * 提供稳定的手势状态（带防抖）
+ */
+
+class GestureDetector {
+  constructor(videoElement, overlayCanvas) {
+    this.video = videoElement;
+    this.overlayCanvas = overlayCanvas;
+    this.overlayCtx = overlayCanvas ? overlayCanvas.getContext('2d') : null;
+
+    this.hands = null;
+    this.camera = null;
+    this.isReady = false;
+    this.isRunning = false;
+
+    // 当前手势状态
+    this.currentGesture = 'none';
+    this.confidence = 0;
+    this.stableGesture = 'none';
+    this._gestureHistory = [];
+    this._historySize = 8;
+
+    // 手指伸展状态缓存
+    this.fingersState = { thumb: false, index: false, middle: false, ring: false, pinky: false };
+
+    // 回调
+    this.onGestureChange = null;
+    this.onReady = null;
+    this.onError = null;
+
+    // 手掌张开程度 (0~1) - 用于控制散开强度
+    this.openAmount = 0;
+  }
+
+  /**
+   * 初始化 MediaPipe Hands
+   */
+  async init() {
+    try {
+      // 检查 MediaPipe 是否加载
+      if (typeof Hands === 'undefined') {
+        throw new Error('MediaPipe Hands 未加载');
+      }
+
+      this.hands = new Hands({
+        locateFile: (file) => {
+          return `../js/mediapipe/${file}`;
+        }
+      });
+
+      this.hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 0, // 使用 lite 模型，性能更好
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.5
+      });
+
+      this.hands.onResults((results) => this._onResults(results));
+
+      this.isReady = true;
+      if (this.onReady) this.onReady();
+
+      return true;
+    } catch (err) {
+      console.error('手势检测器初始化失败:', err);
+      if (this.onError) this.onError(err);
+      return false;
+    }
+  }
+
+  /**
+   * 启动摄像头
+   */
+  async startCamera() {
+    if (!this.isReady && !(await this.init())) {
+      return false;
+    }
+
+    try {
+      // 请求摄像头权限并启动
+      this.camera = new Camera(this.video, {
+        onFrame: async () => {
+          if (this.hands && this.isRunning) {
+            await this.hands.send({ image: this.video });
+          }
+        },
+        width: 640,
+        height: 480
+      });
+
+      await this.camera.start();
+      this.isRunning = true;
+
+      // 调整 overlay canvas 尺寸
+      if (this.overlayCanvas) {
+        this.overlayCanvas.width = this.video.videoWidth || 640;
+        this.overlayCanvas.height = this.video.videoHeight || 480;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('摄像头启动失败:', err);
+      if (this.onError) this.onError(err);
+      return false;
+    }
+  }
+
+  /**
+   * 停止
+   */
+  stop() {
+    this.isRunning = false;
+    if (this.camera) {
+      this.camera.stop();
+      this.camera = null;
+    }
+  }
+
+  /**
+   * 处理 MediaPipe 结果
+   */
+  _onResults(results) {
+    if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+      this._updateGesture('none', 0);
+      this._clearOverlay();
+      return;
+    }
+
+    const landmarks = results.multiHandLandmarks[0];
+    this._detectFingers(landmarks);
+    const gesture = this._recognizeGesture();
+
+    this._updateGesture(gesture.name, gesture.confidence);
+    this._drawOverlay(landmarks);
+  }
+
+  /**
+   * 检测每根手指是否伸直
+   * 使用指尖与指节的相对位置判断
+   */
+  _detectFingers(landmarks) {
+    // 手部关键点索引：
+    // 0: 手腕 (wrist)
+    // 1-4: 拇指 (thumb)
+    // 5-8: 食指 (index)
+    // 9-12: 中指 (middle)
+    // 13-16: 无名指 (ring)
+    // 17-20: 小指 (pinky)
+
+    const getDist = (a, b) => {
+      const dx = landmarks[a].x - landmarks[b].x;
+      const dy = landmarks[a].y - landmarks[b].y;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    // 手掌大小参考（手腕到中指根部的距离）
+    const palmSize = getDist(0, 9);
+
+    // 拇指：比较指尖(4)到手腕(0)的距离 vs 拇指根部(2)到手腕的距离
+    // 更准确的方式：拇指指尖(4)到小指根部(17)的距离
+    const thumbTipToPinky = getDist(4, 17);
+    this.fingersState.thumb = thumbTipToPinky > palmSize * 0.7;
+
+    // 其他四指：指尖 y 坐标小于（在图像中更靠上）指节 y 坐标即为伸直
+    // 注意：y 越小越靠上
+    this.fingersState.index = landmarks[8].y < landmarks[6].y - 0.02;
+    this.fingersState.middle = landmarks[12].y < landmarks[10].y - 0.02;
+    this.fingersState.ring = landmarks[16].y < landmarks[14].y - 0.02;
+    this.fingersState.pinky = landmarks[20].y < landmarks[18].y - 0.02;
+
+    // 计算手掌张开程度（0~1）
+    const extendedCount = [
+      this.fingersState.thumb,
+      this.fingersState.index,
+      this.fingersState.middle,
+      this.fingersState.ring,
+      this.fingersState.pinky
+    ].filter(Boolean).length;
+
+    // 更精细的张开程度：用指尖展开的平均距离
+    const tipIndices = [4, 8, 12, 16, 20];
+    let totalSpread = 0;
+    for (let i = 0; i < tipIndices.length; i++) {
+      for (let j = i + 1; j < tipIndices.length; j++) {
+        totalSpread += getDist(tipIndices[i], tipIndices[j]);
+      }
+    }
+    const avgSpread = totalSpread / 10;
+    this.openAmount = Math.max(0, Math.min(1, (avgSpread / palmSize - 1.2) / 1.5));
+  }
+
+  /**
+   * 根据手指状态识别手势
+   */
+  _recognizeGesture() {
+    const f = this.fingersState;
+    const extended = [f.thumb, f.index, f.middle, f.ring, f.pinky];
+    const count = extended.filter(Boolean).length;
+
+    // 握拳：所有手指都弯曲
+    if (count === 0) {
+      return { name: 'fist', confidence: 0.9 };
+    }
+
+    // 手掌张开：所有手指都伸直
+    if (count === 5) {
+      return { name: 'open', confidence: 0.9 };
+    }
+
+    // 数字 1：只有食指伸直
+    if (f.index && !f.middle && !f.ring && !f.pinky) {
+      return { name: 'one', confidence: 0.85 };
+    }
+
+    // 数字 2：食指和中指伸直（剪刀手也包含）
+    if (f.index && f.middle && !f.ring && !f.pinky) {
+      return { name: 'two', confidence: 0.85 };
+    }
+
+    // 数字 3：食指、中指、无名指伸直
+    if (f.index && f.middle && f.ring && !f.pinky) {
+      return { name: 'three', confidence: 0.8 };
+    }
+
+    // 数字 4：除拇指外都伸直
+    if (!f.thumb && f.index && f.middle && f.ring && f.pinky) {
+      return { name: 'four', confidence: 0.8 };
+    }
+
+    // 拇指点赞
+    if (f.thumb && !f.index && !f.middle && !f.ring && !f.pinky) {
+      return { name: 'thumbsup', confidence: 0.7 };
+    }
+
+    return { name: 'unknown', confidence: 0.5 };
+  }
+
+  /**
+   * 更新手势状态（带防抖/平滑）
+   */
+  _updateGesture(gesture, confidence) {
+    this.currentGesture = gesture;
+    this.confidence = confidence;
+
+    // 添加到历史
+    this._gestureHistory.push(gesture);
+    if (this._gestureHistory.length > this._historySize) {
+      this._gestureHistory.shift();
+    }
+
+    // 找出出现次数最多的手势
+    const counts = {};
+    for (const g of this._gestureHistory) {
+      counts[g] = (counts[g] || 0) + 1;
+    }
+
+    let maxGesture = 'none';
+    let maxCount = 0;
+    for (const g in counts) {
+      if (counts[g] > maxCount) {
+        maxCount = counts[g];
+        maxGesture = g;
+      }
+    }
+
+    // 超过 60% 一致才认为稳定
+    const stableThreshold = Math.floor(this._historySize * 0.6);
+    const newStable = maxCount >= stableThreshold ? maxGesture : 'none';
+
+    const oldStable = this.stableGesture;
+    if (newStable !== oldStable) {
+      this.stableGesture = newStable;
+      if (this.onGestureChange) {
+        this.onGestureChange(newStable, oldStable);
+      }
+    }
+  }
+
+  /**
+   * 绘制手部骨架覆盖层
+   */
+  _drawOverlay(landmarks) {
+    if (!this.overlayCtx || !this.overlayCanvas) return;
+
+    const ctx = this.overlayCtx;
+    const w = this.overlayCanvas.width;
+    const h = this.overlayCanvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // 连接线
+    const connections = [
+      [0, 1], [1, 2], [2, 3], [3, 4], // 拇指
+      [0, 5], [5, 6], [6, 7], [7, 8], // 食指
+      [5, 9], [9, 10], [10, 11], [11, 12], // 中指
+      [9, 13], [13, 14], [14, 15], [15, 16], // 无名指
+      [13, 17], [17, 18], [18, 19], [19, 20], // 小指
+      [0, 17] // 掌缘
+    ];
+
+    ctx.strokeStyle = 'rgba(120, 200, 120, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (const [a, b] of connections) {
+      ctx.moveTo(landmarks[a].x * w, landmarks[a].y * h);
+      ctx.lineTo(landmarks[b].x * w, landmarks[b].y * h);
+    }
+    ctx.stroke();
+
+    // 关键点
+    ctx.fillStyle = 'rgba(200, 255, 200, 0.9)';
+    for (let i = 0; i < landmarks.length; i++) {
+      ctx.beginPath();
+      ctx.arc(landmarks[i].x * w, landmarks[i].y * h, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  _clearOverlay() {
+    if (!this.overlayCtx || !this.overlayCanvas) return;
+    this.overlayCtx.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+  }
+
+  /**
+   * 获取当前张开程度 (0~1)
+   */
+  getOpenAmount() {
+    if (this.stableGesture === 'open') return this.openAmount;
+    if (this.stableGesture === 'fist') return 0;
+    if (this.stableGesture === 'one' || this.stableGesture === 'two' || this.stableGesture === 'three') {
+      return 0.3; // 数字手势时轻微散开
+    }
+    return this.openAmount * 0.5;
+  }
+}
+
+  </script>
+
+  <script>
+/**
+ * 主应用逻辑
+ * 串联粒子系统、手势识别、UI 交互
+ */
+
+// 全局模式
+window.appMode = 'gesture'; // 'gesture' 或 'mouse'
+
+class App {
+  constructor() {
+    // DOM 元素
+    this.canvas = document.getElementById('posterCanvas');
+    this.video = document.getElementById('inputVideo');
+    this.overlayCanvas = document.getElementById('overlayCanvas');
+    this.cameraPreview = document.getElementById('cameraPreview');
+    this.cameraStatus = document.getElementById('cameraStatus');
+    this.statusText = document.getElementById('statusText');
+    this.statusDot = document.querySelector('.status-dot');
+    this.gestureHint = document.getElementById('gestureHint');
+    this.currentGestureEl = document.getElementById('currentGesture');
+    this.gestureNameEl = document.getElementById('gestureName');
+    this.tipText = document.getElementById('tipText');
+    this.permissionModal = document.getElementById('permissionModal');
+    this.dots = document.querySelectorAll('.poster-indicator .dot');
+    this.modeGestureBtn = document.getElementById('modeGesture');
+    this.modeMouseBtn = document.getElementById('modeMouse');
+    this.btnAllowCamera = document.getElementById('btnAllowCamera');
+    this.btnUseMouse = document.getElementById('btnUseMouse');
+
+    // 故事层 DOM
+    this.storyLayer = document.getElementById('storyLayer');
+    this.storyPhoto = document.getElementById('storyPhoto');
+    this.storyEyebrow = document.getElementById('storyEyebrow');
+    this.storyTitle = document.getElementById('storyTitle');
+    this.storyBody = document.getElementById('storyBody');
+    this.storyDecoration = document.getElementById('storyDecoration');
+
+    // 海报数据
+    // === 海报图片 CDN 地址 ===
+    // 部署前请替换为实际的 aka.doubaocdn.com 图片直链
+    this.posters = [
+      { src: '../assets/poster1.jpg', name: '梅花', theme: '梅香正气', storyTheme: 'theme-plum', eyebrow: '菰城廉脉 · 源头' },
+      { src: '../assets/poster2.jpg', name: '枫叶', theme: '丹枫高洁', storyTheme: 'theme-maple', eyebrow: '菰城廉脉 · 守节' },
+      { src: '../assets/poster3.jpg', name: '银杏', theme: '金杏守心', storyTheme: 'theme-ginkgo', eyebrow: '菰城廉脉 · 尚俭' }
+    ];
+    this.currentPosterIndex = 0;
+    this._posterLoadVersion = 0;
+    this._posterLoadTimer = null;
+
+    // 故事内容数据（顺序与 posters 对应：梅花、枫叶、银杏）
+    this.stories = [
+      {
+        title: '春申君黄歇 · 筑菰城、兴水利而不私',
+        body: '公元前248年，春申君黄歇在此营建菰城（下菰城遗址，就在菰城村内），作为封邑。他主持修水利、通河道、劝农垦田，造福当地百姓。虽受封于此，却不独占土地资源，以仁政安民，不搜刮民财，奠定菰城最早的清正根基，是菰城廉脉的源头。',
+        photo: '../assets/story1.jpg'
+      },
+      {
+        title: '姚察 · 拒礼守节',
+        body: '南朝姚察，曾在吴兴（菰城属地）任职，品行高洁。有门生故吏送来厚礼，想托他办事，姚察一概谢绝，分文不取。他说：我身居乡土，当守本心，不因人情私利动摇操守。丹枫赤诚，守正不阿，是吴兴南部（道场山菰城片区）流传的清廉故事。',
+        photo: '../assets/story2.jpg'
+      },
+      {
+        title: '陆纳 · 杖侄拒奢',
+        body: '陆纳是东晋吴兴太守，治所就在菰城一带。他一生清贫，反对奢靡。一次大将军谢安来访，陆纳只准备简单茶饭；他侄子自作主张摆出丰盛宴席，待客之后，陆纳怒而杖责侄子，训诫他不可铺张浮华、沾染奢靡之风。以俭养廉，清心自持，被道场乡清廉文化长廊收录。',
+        photo: '../assets/story3.jpg'
+      }
+    ];
+
+    // 故事层状态
+    this.storyVisible = false;
+    this.storyFading = false;
+    this._storyShowTimer = null;
+    this._storyHideTimer = null;
+
+    // 手势相关
+    this.gestureDetector = null;
+    this._lastNumberGesture = null;
+    this._numberGestureTime = 0;
+    this._posterSwitchCooldown = 0;
+
+    // 初始化
+    this._init();
+  }
+
+  async _init() {
+    // 创建粒子系统
+    this.particleSystem = new ParticleSystem(this.canvas);
+    this.particleSystem.start();
+
+    // 加载第一张海报
+    await this._loadPoster(0);
+
+    // 绑定 UI 事件
+    this._bindUIEvents();
+
+    // 默认以鼠标模式启动，展示清晰海报
+    // 用户点击「手势模式」按钮后再请求摄像头权限
+    this._switchMode('mouse');
+  }
+
+  async _loadPoster(index) {
+    if (index < 0 || index >= this.posters.length) return;
+
+    const requestVersion = ++this._posterLoadVersion;
+    clearTimeout(this._posterLoadTimer);
+    this.currentPosterIndex = index;
+
+    // 更新指示器
+    this.dots.forEach((dot, i) => {
+      dot.classList.toggle('active', i === index);
+    });
+
+    this._hideStory();
+    this.particleSystem.gather();
+
+    this._posterLoadTimer = setTimeout(() => {
+      this.particleSystem.loadPoster(this.posters[index].src, index)
+        .then((loaded) => {
+          if (loaded && requestVersion === this._posterLoadVersion) {
+            this._updateStoryContent(index);
+          }
+        })
+        .catch((err) => {
+          if (requestVersion === this._posterLoadVersion) {
+            console.error('海报加载失败:', err);
+            this.tipText.textContent = '海报加载失败，请刷新页面重试';
+          }
+        });
+    }, 600);
+  }
+
+  /**
+   * 更新故事层内容（预加载图片）
+   */
+  _updateStoryContent(index) {
+    const story = this.stories[index];
+    const poster = this.posters[index];
+    if (!story || !poster) return;
+
+    // 设置装饰主题
+    this.storyDecoration.className = 'story-decoration ' + (poster.storyTheme || '');
+
+    // 预加载图片
+    const img = new Image();
+    img.onload = () => {
+      this.storyPhoto.src = story.photo;
+    };
+    img.src = story.photo;
+
+    // 设置文字
+    this.storyEyebrow.textContent = poster.eyebrow || '';
+    this.storyTitle.textContent = story.title;
+    this.storyBody.textContent = story.body;
+  }
+
+  /**
+   * 显示故事层
+   */
+  _showStory() {
+    if (this.storyVisible) return;
+
+    // 确保内容是当前海报的
+    this._updateStoryContent(this.currentPosterIndex);
+
+    // 清除隐藏定时器
+    if (this._storyHideTimer) {
+      clearTimeout(this._storyHideTimer);
+      this._storyHideTimer = null;
+    }
+
+    this.storyLayer.classList.remove('fading');
+    // 强制 reflow 以重新触发动画
+    void this.storyLayer.offsetWidth;
+    this.storyLayer.classList.add('visible');
+    this.storyVisible = true;
+    this.storyFading = false;
+  }
+
+  /**
+   * 隐藏故事层
+   * @param {Function} callback - 隐藏完成后的回调
+   */
+  _hideStory(callback) {
+    if (!this.storyVisible && !this.storyFading) {
+      if (callback) callback();
+      return;
+    }
+
+    // 清除显示定时器
+    if (this._storyShowTimer) {
+      clearTimeout(this._storyShowTimer);
+      this._storyShowTimer = null;
+    }
+
+    this.storyLayer.classList.remove('visible');
+    this.storyLayer.classList.add('fading');
+    this.storyVisible = false;
+    this.storyFading = true;
+
+    // 0.5 秒后隐藏完成
+    this._storyHideTimer = setTimeout(() => {
+      this.storyLayer.classList.remove('fading');
+      this.storyFading = false;
+      this._storyHideTimer = null;
+      if (callback) callback();
+    }, 550);
+  }
+
+  _bindUIEvents() {
+    // 海报指示器点击
+    this.dots.forEach((dot, i) => {
+      dot.addEventListener('click', () => this._loadPoster(i));
+    });
+
+    // 模式切换按钮
+    this.modeGestureBtn.addEventListener('click', () => {
+      if (window.appMode !== 'gesture') {
+        this._tryStartGestureMode(false);
+      }
+    });
+
+    this.modeMouseBtn.addEventListener('click', () => {
+      this._switchMode('mouse');
+    });
+
+    // 权限弹窗按钮
+    this.btnAllowCamera.addEventListener('click', () => {
+      this.permissionModal.style.display = 'none';
+      this._tryStartGestureMode(true);
+    });
+
+    this.btnUseMouse.addEventListener('click', () => {
+      this.permissionModal.style.display = 'none';
+      this._switchMode('mouse');
+    });
+  }
+
+  async _tryStartGestureMode(forceRequest = false) {
+    // 检查浏览器是否支持 getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('浏览器不支持摄像头');
+      this._switchMode('mouse');
+      return;
+    }
+
+    // 如果不是强制请求，先检查权限状态
+    if (!forceRequest) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'camera' });
+        if (permission.state === 'denied') {
+          console.warn('摄像头权限已被拒绝');
+          this._switchMode('mouse');
+          return;
+        }
+        if (permission.state === 'prompt') {
+          // 显示权限引导弹窗
+          this.permissionModal.style.display = 'flex';
+          return;
+        }
+        // granted - 继续
+      } catch (e) {
+        // permissions API 不可用，直接尝试
+        console.warn('无法查询摄像头权限:', e);
+      }
+    }
+
+    this._setStatus('正在启动摄像头…', false);
+
+    // 创建手势检测器
+    this.gestureDetector = new GestureDetector(this.video, this.overlayCanvas);
+
+    this.gestureDetector.onReady = () => {
+      console.log('手势检测器就绪');
+    };
+
+    this.gestureDetector.onGestureChange = (newGesture, oldGesture) => {
+      this._onGestureChange(newGesture, oldGesture);
+    };
+
+    this.gestureDetector.onError = (err) => {
+      console.error('手势检测错误:', err);
+      this._setStatus('摄像头不可用', false);
+      this._switchMode('mouse');
+    };
+
+    try {
+      const success = await this.gestureDetector.startCamera();
+      if (success) {
+        this._setStatus('手势识别中', true);
+        this._switchMode('gesture');
+      } else {
+        this._switchMode('mouse');
+      }
+    } catch (err) {
+      console.error('启动摄像头失败:', err);
+      this._switchMode('mouse');
+    }
+  }
+
+  _switchMode(mode) {
+    window.appMode = mode;
+
+    if (mode === 'gesture') {
+      this.modeGestureBtn.classList.add('active');
+      this.modeMouseBtn.classList.remove('active');
+      this.cameraPreview.classList.remove('hidden');
+      this.tipText.textContent = '请将手置于镜头前，使用手势与海报互动';
+    } else {
+      this.modeGestureBtn.classList.remove('active');
+      this.modeMouseBtn.classList.add('active');
+      this.cameraPreview.classList.add('hidden');
+      this.tipText.textContent = '在海报上拖拽散开粒子，点击画面重新聚合';
+
+      // 停止摄像头
+      if (this.gestureDetector) {
+        this.gestureDetector.stop();
+      }
+    }
+  }
+
+  _setStatus(text, active) {
+    this.statusText.textContent = text;
+    if (active) {
+      this.statusDot.classList.add('active');
+    } else {
+      this.statusDot.classList.remove('active');
+    }
+  }
+
+  _onGestureChange(newGesture, oldGesture) {
+    // 更新显示
+    const gestureNames = {
+      'none': '未检测到手',
+      'open': '手掌张开',
+      'fist': '握拳',
+      'one': '数字 1',
+      'two': '数字 2',
+      'three': '数字 3',
+      'four': '数字 4',
+      'thumbsup': '点赞',
+      'unknown': '未知手势'
+    };
+
+    if (newGesture !== 'none') {
+      this.currentGestureEl.classList.add('visible');
+      this.gestureNameEl.textContent = gestureNames[newGesture] || newGesture;
+    } else {
+      this.currentGestureEl.classList.remove('visible');
+    }
+
+    // 处理散开/聚合
+    if (newGesture === 'open') {
+      this.particleSystem.scatter();
+      // 粒子散开后半段开始浮现故事（约 1.2 秒后）
+      if (this._storyShowTimer) clearTimeout(this._storyShowTimer);
+      this._storyShowTimer = setTimeout(() => {
+        this._showStory();
+      }, 1200);
+    } else if (newGesture === 'fist') {
+      // 先隐藏故事，再聚合粒子
+      if (this._storyShowTimer) {
+        clearTimeout(this._storyShowTimer);
+        this._storyShowTimer = null;
+      }
+      this._hideStory(() => {
+        this.particleSystem.gather();
+      });
+    }
+
+    // 处理数字手势切换海报（带冷却）
+    const now = Date.now();
+    if (this._posterSwitchCooldown > now) return;
+
+    if (newGesture === 'one' && oldGesture !== 'one') {
+      this._loadPoster(0);
+      this._posterSwitchCooldown = now + 1500;
+    } else if (newGesture === 'two' && oldGesture !== 'two') {
+      this._loadPoster(1);
+      this._posterSwitchCooldown = now + 1500;
+    } else if (newGesture === 'three' && oldGesture !== 'three') {
+      this._loadPoster(2);
+      this._posterSwitchCooldown = now + 1500;
+    }
+  }
+
+  /**
+   * 主循环中更新（用于实时张开程度控制、鼠标模式故事联动）
+   */
+  update() {
+    if (window.appMode === 'gesture' && this.gestureDetector && this.gestureDetector.isRunning) {
+      const openAmount = this.gestureDetector.getOpenAmount();
+      if (this.gestureDetector.stableGesture === 'open') {
+        this.particleSystem.setScatterAmount(Math.max(
+          this.particleSystem.scatterProgress,
+          openAmount
+        ));
+      }
+    }
+
+    // 鼠标模式下：根据散开程度控制故事显示
+    if (window.appMode === 'mouse') {
+      const progress = this.particleSystem.scatterProgress;
+      const state = this.particleSystem.state;
+
+      // 散开进度超过 60% 时显示故事
+      if ((state === 1 || state === 2) && progress > 0.6 && !this.storyVisible && !this._storyShowTimer) {
+        this._storyShowTimer = setTimeout(() => {
+          this._showStory();
+          this._storyShowTimer = null;
+        }, 100);
+      }
+      // 聚合中或进度低于 30% 时隐藏故事
+      if ((state === 3 || state === 0) && this.storyVisible && !this._storyHideTimer) {
+        this._hideStory();
+      }
+    }
+
+    requestAnimationFrame(() => this.update());
+  }
+
+  start() {
+    this.update();
+  }
+}
+
+// 启动应用
+window.addEventListener('DOMContentLoaded', () => {
+  const app = new App();
+  app.start();
+  window.app = app;
+});
+
+  </script>
+</body>
+</html>

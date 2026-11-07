@@ -3,5 +3,15 @@
     "path": "/",
     "file": "index.html",
     "name": "菰城清风海报交互"
+  },
+  {
+    "path": "/export",
+    "file": "export/index.html",
+    "name": "菰城清风海报交互"
+  },
+  {
+    "path": "/export/index-cdn",
+    "file": "export/index-cdn/index.html",
+    "name": "菰城清风海报交互"
   }
 ]

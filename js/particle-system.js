@@ -11,6 +11,7 @@ class ParticleSystem {
     this.particles = [];
     this.posterImage = null;
     this.posterIndex = 0;
+    this._posterLoadVersion = 0;
     this.dpr = window.devicePixelRatio || 1;
 
     // 状态：0=完整海报, 1=散开中, 2=飘散中, 3=聚合中
@@ -19,7 +20,7 @@ class ParticleSystem {
     this.gatherProgress = 1;  // 0~1
 
     // 飘散参数
-    this.windStrength = 0.3;
+    this.windStrength = 0.15;
     this.time = 0;
 
     // 粒子大小
@@ -132,17 +133,22 @@ class ParticleSystem {
    * 加载海报并创建粒子
    */
   loadPoster(imageSrc, posterIndex) {
+    const requestVersion = ++this._posterLoadVersion;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
+        if (requestVersion !== this._posterLoadVersion) {
+          resolve(false);
+          return;
+        }
         this.posterImage = img;
         this.posterIndex = posterIndex;
         this._createParticles();
         this.state = 0;
         this.gatherProgress = 1;
         this.scatterProgress = 0;
-        resolve();
+        resolve(true);
       };
       img.onerror = reject;
       img.src = imageSrc;
@@ -308,21 +314,21 @@ class ParticleSystem {
     // 鼠标模式下的拖拽散开
     if (window.appMode === 'mouse') {
       if (!this.isDragging && this.dragScatterAmount > 0) {
-        this.dragScatterAmount = Math.max(0, this.dragScatterAmount - dt * 0.3);
+        this.dragScatterAmount = Math.max(0, this.dragScatterAmount - dt * 0.15);
       }
       this.setScatterAmount(this.dragScatterAmount);
     }
 
     // 状态转换
     if (this.state === 1) {
-      // 散开中
-      this.scatterProgress = Math.min(1, this.scatterProgress + dt * 1.2);
+      // 散开中 — 放慢节奏，约 2.5 秒
+      this.scatterProgress = Math.min(1, this.scatterProgress + dt * 0.4);
       if (this.scatterProgress >= 1) {
         this.state = 2; // 进入飘散状态
       }
     } else if (this.state === 3) {
-      // 聚合中
-      this.gatherProgress = Math.min(1, this.gatherProgress + dt * 1.0);
+      // 聚合中 — 放慢节奏，约 2.8 秒
+      this.gatherProgress = Math.min(1, this.gatherProgress + dt * 0.35);
       if (this.gatherProgress >= 1) {
         this.state = 0; // 回到完整海报
       }
@@ -356,25 +362,25 @@ class ParticleSystem {
       // 飘散时的浮动效果（清风感）
       if (this.state === 2) {
         const floatAmount = 1;
-        const windOffset = Math.sin(this.time * p.floatSpeed + p.floatOffsetX) * p.floatAmpX * floatAmount;
-        const windOffsetY = Math.cos(this.time * p.floatSpeed * 0.7 + p.floatOffsetY) * p.floatAmpY * floatAmount;
+        const windOffset = Math.sin(this.time * p.floatSpeed * 0.6 + p.floatOffsetX) * p.floatAmpX * floatAmount;
+        const windOffsetY = Math.cos(this.time * p.floatSpeed * 0.4 + p.floatOffsetY) * p.floatAmpY * floatAmount;
         // 整体向右下方轻微漂移（清风方向）
-        const driftX = Math.sin(this.time * 0.2) * 15;
-        const driftY = Math.cos(this.time * 0.15) * 8;
+        const driftX = Math.sin(this.time * 0.1) * 12;
+        const driftY = Math.cos(this.time * 0.08) * 6;
 
         baseX += windOffset + driftX;
         baseY += windOffsetY + driftY;
       }
 
       // 平滑移动
-      p.x += (baseX - p.x) * 0.15;
-      p.y += (baseY - p.y) * 0.15;
+      p.x += (baseX - p.x) * 0.08;
+      p.y += (baseY - p.y) * 0.08;
 
       // 旋转
       if (this.state === 1 || this.state === 2) {
-        p.rotation += p.rotationSpeed * (1 + progress);
+        p.rotation += p.rotationSpeed * (0.5 + progress * 0.5);
       } else if (this.state === 3) {
-        p.rotation *= 0.92; // 逐渐回正
+        p.rotation *= 0.96; // 逐渐回正
       }
     }
   }

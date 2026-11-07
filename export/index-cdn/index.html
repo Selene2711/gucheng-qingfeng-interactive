@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>菰城清风海报交互</title>
+</head>
+<body>
+  <p>正在打开海报交互页面… <a href="../index-cdn.html">点击此处继续</a></p>
+  <script>
+    const route = location.pathname.endsWith('/') ? location.pathname : location.pathname + '/';
+    location.replace(route + '../index-cdn.html');
+  </script>
+</body>
+</html>

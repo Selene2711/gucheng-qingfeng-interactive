@@ -36,6 +36,21 @@
     <div class="poster-container">
       <canvas id="posterCanvas"></canvas>
       <div class="poster-frame"></div>
+      <!-- 故事图文层 -->
+      <div class="story-layer" id="storyLayer" aria-hidden="true">
+        <div class="story-inner">
+          <div class="story-photo-wrap">
+            <img class="story-photo" id="storyPhoto" src="" alt="实景照片">
+            <div class="story-photo-mask"></div>
+          </div>
+          <div class="story-text">
+            <div class="story-eyebrow" id="storyEyebrow"></div>
+            <h2 class="story-title" id="storyTitle"></h2>
+            <p class="story-body" id="storyBody"></p>
+          </div>
+          <div class="story-decoration" id="storyDecoration"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 摄像头预览（小窗口） -->
