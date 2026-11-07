@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="creative-medium" content="interactive-prototype">
+  <title>菰城清风海报交互</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- 字体 -->
+  <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Ma+Shan+Zheng&display=swap">
+</head>
+<body>
+  <!-- 背景装饰 -->
+  <div class="bg-layer">
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="ink-pattern"></div>
+  </div>
+
+  <!-- 顶部标题 -->
+  <header class="page-header">
+    <div class="title-wrap">
+      <h1 class="main-title">菰城清风</h1>
+      <p class="sub-title">廉洁文化海报 · 手势交互展示</p>
+    </div>
+    <div class="poster-indicator">
+      <span class="dot active" data-poster="0"></span>
+      <span class="dot" data-poster="1"></span>
+      <span class="dot" data-poster="2"></span>
+    </div>
+  </header>
+
+  <!-- 主舞台 -->
+  <main class="stage">
+    <!-- 海报画布 -->
+    <div class="poster-container">
+      <canvas id="posterCanvas"></canvas>
+      <div class="poster-frame"></div>
+    </div>
+
+    <!-- 摄像头预览（小窗口） -->
+    <div class="camera-preview" id="cameraPreview">
+      <video id="inputVideo" autoplay playsinline muted></video>
+      <canvas id="overlayCanvas"></canvas>
+      <div class="camera-status" id="cameraStatus">
+        <span class="status-dot"></span>
+        <span class="status-text" id="statusText">正在启动摄像头…</span>
+      </div>
+    </div>
+
+    <!-- 手势提示 -->
+    <div class="gesture-hint" id="gestureHint">
+      <div class="hint-card">
+        <div class="hint-icon">✋</div>
+        <div class="hint-text">
+          <strong>手掌张开</strong>
+          <span>海报随风散开</span>
+        </div>
+      </div>
+      <div class="hint-card">
+        <div class="hint-icon">✊</div>
+        <div class="hint-text">
+          <strong>握拳</strong>
+          <span>碎片聚合归位</span>
+        </div>
+      </div>
+      <div class="hint-card">
+        <div class="hint-icon">☝️</div>
+        <div class="hint-text">
+          <strong>比 1 / 2 / 3</strong>
+          <span>切换梅 / 枫 / 杏</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 当前手势显示 -->
+    <div class="current-gesture" id="currentGesture">
+      <span class="gesture-label">识别中</span>
+      <span class="gesture-name" id="gestureName">—</span>
+    </div>
+  </main>
+
+  <!-- 底部操作引导 -->
+  <footer class="page-footer">
+    <div class="mode-switch">
+      <button class="mode-btn active" id="modeGesture">
+        <span class="mode-icon">🖐️</span>
+        <span>手势模式</span>
+      </button>
+      <button class="mode-btn" id="modeMouse">
+        <span class="mode-icon">🖱️</span>
+        <span>鼠标模式</span>
+      </button>
+    </div>
+    <p class="tip-text" id="tipText">
+      请允许摄像头权限，将手置于镜头前体验手势交互
+    </p>
+  </footer>
+
+  <!-- 权限弹窗 -->
+  <div class="permission-modal" id="permissionModal" style="display:none;">
+    <div class="modal-content">
+      <h3>需要摄像头权限</h3>
+      <p>手势交互需要使用您的摄像头来识别手部动作。<br>您也可以选择使用鼠标模式体验。</p>
+      <div class="modal-buttons">
+        <button class="btn-primary" id="btnAllowCamera">允许摄像头</button>
+        <button class="btn-secondary" id="btnUseMouse">使用鼠标模式</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MediaPipe Hands -->
+  <script src="js/mediapipe/hands.js"></script>
+  <script src="js/mediapipe/camera_utils.js"></script>
+  <script src="js/mediapipe/drawing_utils.js"></script>
+
+  <!-- 应用脚本 -->
+  <script src="js/shapes.js"></script>
+  <script src="js/particle-system.js"></script>
+  <script src="js/gesture-detector.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
